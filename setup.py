@@ -5,7 +5,7 @@ from sys import platform, prefix, executable, exit
 from subprocess import Popen, PIPE
 from os.path import dirname, exists, join, normpath
 from tempfile import mkstemp
-from os import write, close, remove
+from os import write, close, remove, environ
 
 import logging
 import re
@@ -16,7 +16,15 @@ VERSION = '0.12.2'
 include_dirs = []
 lib_dirs = []
 
-for _path in [dirname(executable), dirname(dirname(executable)), "c:\\freetds"]:
+compilation_search_paths = [
+    dirname(executable),
+    dirname(dirname(executable)),
+]
+
+if ON_WINDOWS:
+    compilation_search_paths.append(environ.get("FREETDS", "c:\\freetds"))
+
+for _path in compilation_search_paths:
     include_path = join(_path, "include")
     lib_path = join(_path, "lib")
 
