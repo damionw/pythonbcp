@@ -225,7 +225,7 @@ static PyObject* python_bcp_object_connect(BCP_ConnectionObject* self, PyObject*
 {
     static char *keywords[] = {"server", "username", "password", "database", "batchsize", "textsize", NULL};
 
-    const char *server = "devvs05e";
+    const char *server = "hostname";
     const char *username = "dkw";
     const char *password = "";
     const char *database = "gps_querydb";

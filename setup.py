@@ -82,16 +82,16 @@ def extract_constants(freetds_include="sybdb.h", constants_file="bcp_constants.p
 
     for include_file in include_paths:
         with open(include_file, "r") as fd:
-            rows = [
-                "%s=%d" % (_values[1], int(_values[2])) 
+            definition_pairs = [
+                (_values[1], int(_values[2])) 
                 for contents in [fd.read()]
                 for _row in row_regex.split(contents)
                 for _values in [field_regex.split(_row)] if len(_values) == 3 and _values[0] == "#define" and _values[2].isdigit()
             ]
 
-        if len(rows):
+        if len(definition_pairs):
             with open(constants_file, "w") as output_fd:
-                print >> output_fd, rows
+                print >> output_fd, "\n".join("%s=%d" % _row for _row in definition_pairs)
 
             break
     else:
