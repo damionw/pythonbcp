@@ -1,7 +1,5 @@
 #! /usr/bin/env python
 
-__copyright__ = "(c) 2009 RenaissanceRe IP Holdings Ltd.  All rights reserved."
-
 from optparse import OptionParser
 
 from xml.dom import minidom

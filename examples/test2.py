@@ -1,8 +1,6 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__copyright__ = "(c) 2009 RenaissanceRe IP Holdings Ltd.  All rights reserved."
-
 import bcp
 
 ROW_DATA = [
