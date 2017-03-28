@@ -44,7 +44,7 @@ def extract_constants(freetds_include="sybdb.h", constants_file="bcp_constants.p
     close(fileno)
 
     if ON_WINDOWS:
-        cmd_template = "cl /P {includes} /Fi{output} {source}"
+        cmd_template = "cl /E {includes} {source} > {output}"
     else:
         cmd_template = "cpp {includes} '{source}' > '{output}'"
 
