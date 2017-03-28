@@ -271,7 +271,7 @@ static PyObject* python_bcp_object_connect(BCP_ConnectionObject* self, PyObject*
         return NULL;
     }
 
-    snprintf(query, sizeof(query), "set textsize %d", self->textsize);
+    snprintf(query, sizeof(query), "set textsize %d", (int) self->textsize);
     dbfcmd(self->dbproc, query);
     dbsqlexec(self->dbproc);
     while (dbresults(self->dbproc) != NO_MORE_RESULTS);
@@ -343,7 +343,7 @@ static PyObject* python_bcp_object_sendrow(BCP_ConnectionObject* self, PyObject*
     Py_ssize_t index;
 
     unsigned char** field_data = NULL;
-    int *field_sizes = NULL;
+    Py_ssize_t *field_sizes = NULL;
 
     if (!PyArg_ParseTuple(args, "O", &row_list))
     {
@@ -361,11 +361,16 @@ static PyObject* python_bcp_object_sendrow(BCP_ConnectionObject* self, PyObject*
     {
         self->rowsize = item_count;
     }
-    else if ((field_data = (unsigned char**) malloc(self->rowsize)) == NULL)
+
+    if (PyErr_Occurred()) {
+        return NULL;
+    }
+    
+    if ((field_data = (unsigned char**) malloc(self->rowsize * sizeof(unsigned char*))) == NULL)
     {
         PyErr_SetString(BCP_DataError, "Couldn't allocate column field data storage");
     }
-    else if ((field_sizes = (int*) malloc(self->rowsize)) == NULL)
+    else if ((field_sizes = (Py_ssize_t*) malloc(self->rowsize * sizeof(Py_ssize_t))) == NULL)
     {
         PyErr_SetString(BCP_DataError, "Couldn't allocate column field data storage");
     }
@@ -377,9 +382,9 @@ static PyObject* python_bcp_object_sendrow(BCP_ConnectionObject* self, PyObject*
         return NULL;
     }
 
-    memset(field_sizes, 0, self->rowsize * sizeof(field_sizes[0]));
     memset(field_data, 0, self->rowsize * sizeof(field_data[0]));
-
+    memset(field_sizes, 0, self->rowsize * sizeof(field_sizes[0]));
+    
     for (index = 0; index < self->rowsize && ! PyErr_Occurred(); ++index)
     {
         int bcp_column_position = index + 1; // Column position starts at 1
