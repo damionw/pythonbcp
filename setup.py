@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 from sys import platform, prefix, executable, exit
 from subprocess import Popen, PIPE
 from os.path import dirname, exists, join, normpath
