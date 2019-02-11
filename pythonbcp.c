@@ -29,7 +29,9 @@ e.g.\n\n\
 
 #ifdef IS_PY3K
 #   define PyString_AsStringAndSize PyBytes_AsStringAndSize
-#else
+#endif
+
+#ifndef IS_PY3K
 #   ifndef PyVarObject_HEAD_INIT
 #       define PyVarObject_HEAD_INIT(type, size) PyObject_HEAD_INIT(type) size,
 #   endif
@@ -725,7 +727,6 @@ static PyMemberDef python_bcp_object_members[] =
 //=================================================================================
 static PyTypeObject BCP_ConnectionType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    0,                         /*ob_size*/
     "bcp.Connection",             /*tp_name*/
     sizeof(BCP_ConnectionObject),             /*tp_basicsize*/
     0,                         /*tp_itemsize*/
@@ -785,28 +786,38 @@ static PyTypeObject BCP_ConnectionType = {
 //=================================================================================
 // Naming convention of init<module_name>. That's how python knows what to call
 //=================================================================================
-PyMODINIT_FUNC initbcp(void)
+#ifdef IS_PY3K
+#   define CREATE_MODULE() PyModule_Create(&module_definition)
+#   define INIT_ERROR() return NULL
+#   define INIT_SUCCESS() return module
+#else
+#   define CREATE_MODULE() Py_InitModule3(python_module_name, python_bcp_methods, python_bcp_moduledoc)
+#   define INIT_ERROR() return
+#   define INIT_SUCCESS() return
+#endif
+
+PyMODINIT_FUNC
+#ifdef IS_PY3K
+PyInit_bcp(void)
+#else
+initbcp(void)
+#endif
 {
     PyObject* module;
 
     if (PyType_Ready(&BCP_ConnectionType) < 0)
     {
-        return(0);
+        INIT_ERROR();
     }
 
-#ifdef IS_PY3K
-    if ((module = PyModule_Create(&module_definition)) == NULL) { // Module wasn't loaded, so don't do anything more
-        return(0);
+    if ((module = CREATE_MODULE()) == NULL)
+    {
+        INIT_ERROR();
     }
-#else
-    if ((module = Py_InitModule3(python_module_name, python_bcp_methods, python_bcp_moduledoc)) == NULL) { // Module wasn't loaded, so don't do anything more
-        return(0);
-    }
-#endif
 
     declare_exceptions(module);
     Py_INCREF(&BCP_ConnectionType);
     PyModule_AddObject(module, "Connection", (PyObject*) &BCP_ConnectionType);
-    
-    return(0);
+
+    INIT_SUCCESS();
 }
