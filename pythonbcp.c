@@ -58,27 +58,27 @@ static PyObject* BCP_DblibError;
 //=================================================================================
 static void declare_exceptions(PyObject* module)
 {
-    BCP_InitialiseError = PyErr_NewException("bcp.InitialiseError", PyExc_StandardError, NULL);
+    BCP_InitialiseError = PyErr_NewException("bcp.InitialiseError", NULL, NULL);
     Py_INCREF(BCP_InitialiseError);
     PyModule_AddObject(module, "InitialiseError", BCP_InitialiseError);
 
-    BCP_ParameterError = PyErr_NewException("bcp.ParameterError", PyExc_StandardError, NULL);
+    BCP_ParameterError = PyErr_NewException("bcp.ParameterError", NULL, NULL);
     Py_INCREF(BCP_ParameterError);
     PyModule_AddObject(module, "ParameterError", BCP_ParameterError);
 
-    BCP_LoginError = PyErr_NewException("bcp.LoginError", PyExc_StandardError, NULL);
+    BCP_LoginError = PyErr_NewException("bcp.LoginError", NULL, NULL);
     Py_INCREF(BCP_LoginError);
     PyModule_AddObject(module, "LoginError", BCP_LoginError);
 
-    BCP_SessionError = PyErr_NewException("bcp.SessionError", PyExc_StandardError, NULL);
+    BCP_SessionError = PyErr_NewException("bcp.SessionError", NULL, NULL);
     Py_INCREF(BCP_SessionError);
     PyModule_AddObject(module, "SessionError", BCP_SessionError);
 
-    BCP_DblibError = PyErr_NewException("bcp.DblibError", PyExc_StandardError, NULL);
+    BCP_DblibError = PyErr_NewException("bcp.DblibError", NULL, NULL);
     Py_INCREF(BCP_DblibError);
     PyModule_AddObject(module, "DblibError", BCP_DblibError);
 
-    BCP_DataError = PyErr_NewException("bcp.DataError", PyExc_StandardError, NULL);
+    BCP_DataError = PyErr_NewException("bcp.DataError", NULL, NULL);
     Py_INCREF(BCP_DataError);
     PyModule_AddObject(module, "DataError", BCP_DataError);
 }
@@ -663,7 +663,9 @@ static PyObject* python_bcp_object_new(PyTypeObject* type, PyObject* args, PyObj
 static void python_bcp_object_delete(BCP_ConnectionObject* self)
 {
     python_bcp_object_disconnect(self, Py_None);
-    self->ob_type->tp_free((PyObject*) self);
+    // NIL
+    Py_TYPE(self)->tp_free(self);
+    //self->ob_type->tp_free((PyObject*) self);
 }
 
 //=================================================================================

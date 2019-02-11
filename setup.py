@@ -36,8 +36,8 @@ for _path in compilation_search_paths:
 
 def extract_constants(freetds_include="sybdb.h", constants_file="bcp_constants.py"):
     """ Extract constant names from sybdb.h to use as python constants """
-    fileno, source_file = mkstemp(suffix=".c")
-    write(fileno, "#include <{}>".format(freetds_include))
+    fileno, source_file = mkstemp(suffix=".c", text=True)
+    write(fileno, "#include <{}>".format(freetds_include).encode())
     close(fileno)
 
     fileno, include_directives = mkstemp(suffix=".txt")
@@ -91,7 +91,7 @@ def extract_constants(freetds_include="sybdb.h", constants_file="bcp_constants.p
 
         if len(definition_pairs):
             with open(constants_file, "w") as output_fd:
-                print >> output_fd, "\n".join("%s=%d" % _row for _row in definition_pairs)
+                output_fd.write("\n".join("%s=%d" % _row for _row in definition_pairs))
 
             break
     else:
@@ -125,7 +125,9 @@ else:
         sources = ['pythonbcp.c'],
         include_dirs = include_dirs,
         library_dirs = lib_dirs,
-        libraries = ['sybdb', 'iconv'],
+        libraries = ['sybdb',
+                     # 'iconv', # not needed on ubuntu
+                     ],
         # extra_compile_args=['-m32', '-march=i386'],
         # extra_link_args=['-m32', '-march=i386'],
     )

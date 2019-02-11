@@ -24,3 +24,9 @@ See:
 
 * Test suite
 * OSX build
+
+http://python3porting.com/cextensions.html
+for iconv: apt install libc6-dev
+
+ldd -r build/lib.linux-x86_64-3.7/bcp.cpython-37m-x86_64-linux-gnu.so 
+
