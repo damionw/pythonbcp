@@ -1,31 +1,45 @@
 //=================================================================================
 //                              Python BCP
-char *python_bcp_moduledoc =
-"This python module allows python programs to utilise the bulk copying\n"
-"capabilities of Sybase or Microsoft SQL Server via the freetds library.\n"
-"(www.freetds.org)\n\n"
-"e.g.\n\n"
-"   bcp.use_interfaces('/etc/freetds/freetds.conf')\n\n"
-"   connection = bcp.Connection(server='server', username='me', password='****', database='mydb', batchsize=0)\n\n"
-"   connection.init('mytable')\n\n"
+#define python_bcp_moduledoc "\
+This python module allows python programs to utilise the bulk copying\n\
+capabilities of Sybase or Microsoft SQL Server via the freetds library.\n\
+(www.freetds.org)\n\n\
+e.g.\n\n\
+   bcp.use_interfaces('/etc/freetds/freetds.conf')\n\n\
+   connection = bcp.Connection(server='server', username='me', password='****', database='mydb', batchsize=0)\n\n\
+   connection.init('mytable')\n\n\
+   for row in ROWS:\n\
+        connection.send(row)\n\n\
+   connection.done()\
+   connection.disconnect()\
+"
 
-"   for row in ROWS:\n"
-"        connection.send(row)\n\n"
-
-"   connection.done()"
-"   connection.disconnect()"
-;
 // --------------------------------------------------------------------------------
 // March 24, 2017:   DKW Fix for FreeTDS + Anaconda + Python 2.7 on Windows 7
 // January 20, 2009: DKW, Initial working version
 //=================================================================================
 
+#define python_module_name "bcp"
+
 #include <Python.h>
+
+#if PY_MAJOR_VERSION >= 3
+#   define IS_PY3K
+#endif
+
+#ifdef IS_PY3K
+#   define PyString_AsStringAndSize PyBytes_AsStringAndSize
+#else
+#   ifndef PyVarObject_HEAD_INIT
+#       define PyVarObject_HEAD_INIT(type, size) PyObject_HEAD_INIT(type) size,
+#   endif
+#endif
+
 #include <structmember.h>
 
 // Python 2.6+ prefixes WRITE_RESTRICTED with PY_ 
 #ifndef WRITE_RESTRICTED
-#define WRITE_RESTRICTED PY_WRITE_RESTRICTED
+#   define WRITE_RESTRICTED PY_WRITE_RESTRICTED
 #endif
 
 #include <sybfront.h>
@@ -43,6 +57,7 @@ extern int tdsdump_open(const char *filename);
 //                        Global dblib initialisation flag
 //=================================================================================
 static int DBAPI_Initialised = 0; // FreeTDS library must be initialized only once
+
 //=================================================================================
 //                           Declare exception types
 //=================================================================================
@@ -671,8 +686,7 @@ static void python_bcp_object_delete(BCP_ConnectionObject* self)
 //=================================================================================
 //                      Method declaration table for the module
 //=================================================================================
-static PyMethodDef python_bcp_methods[] =
-{
+static PyMethodDef python_bcp_methods[] = {
     {"use_interfaces", (PyCFunction)python_bcp_use_interfaces, METH_VARARGS|METH_KEYWORDS, "Select interfaces file to use"},
     {"logging", (PyCFunction)python_bcp_logging, METH_VARARGS|METH_KEYWORDS, "Start or stop logging"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -710,7 +724,7 @@ static PyMemberDef python_bcp_object_members[] =
 //             Type definition structure for the connection object
 //=================================================================================
 static PyTypeObject BCP_ConnectionType = {
-    PyObject_HEAD_INIT(NULL)
+    PyVarObject_HEAD_INIT(NULL, 0)
     0,                         /*ob_size*/
     "bcp.Connection",             /*tp_name*/
     sizeof(BCP_ConnectionObject),             /*tp_basicsize*/
@@ -752,6 +766,23 @@ static PyTypeObject BCP_ConnectionType = {
 };
 
 //=================================================================================
+//               Python 3 requires new initialization pattern
+//=================================================================================
+#ifdef IS_PY3K
+    static struct PyModuleDef module_definition = {
+        PyModuleDef_HEAD_INIT,
+        python_module_name,   /* m_name */
+        python_bcp_moduledoc, /* m_doc */
+        -1,                   /* m_size */
+        python_bcp_methods,   /* m_methods */
+        NULL,                 /* m_reload */
+        NULL,                 /* m_traverse */
+        NULL,                 /* m_clear */
+        NULL,                 /* m_free */
+    };
+#endif
+
+//=================================================================================
 // Naming convention of init<module_name>. That's how python knows what to call
 //=================================================================================
 PyMODINIT_FUNC initbcp(void)
@@ -760,15 +791,22 @@ PyMODINIT_FUNC initbcp(void)
 
     if (PyType_Ready(&BCP_ConnectionType) < 0)
     {
-        return;
+        return(0);
     }
 
-    if ((module = Py_InitModule3("bcp", python_bcp_methods, python_bcp_moduledoc)) == NULL) // Module wasn't loaded, so don't do anything more
-    {
-        return;
+#ifdef IS_PY3K
+    if ((module = PyModule_Create(&module_definition)) == NULL) { // Module wasn't loaded, so don't do anything more
+        return(0);
     }
+#else
+    if ((module = Py_InitModule3(python_module_name, python_bcp_methods, python_bcp_moduledoc)) == NULL) { // Module wasn't loaded, so don't do anything more
+        return(0);
+    }
+#endif
 
     declare_exceptions(module);
     Py_INCREF(&BCP_ConnectionType);
     PyModule_AddObject(module, "Connection", (PyObject*) &BCP_ConnectionType);
+    
+    return(0);
 }
