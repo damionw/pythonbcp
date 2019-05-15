@@ -27,10 +27,6 @@ e.g.\n\n\
 #   define IS_PY3K
 #endif
 
-#ifdef IS_PY3K
-#   define PyString_AsStringAndSize PyBytes_AsStringAndSize
-#endif
-
 #ifndef IS_PY3K
 #   ifndef PyVarObject_HEAD_INIT
 #       define PyVarObject_HEAD_INIT(type, size) PyObject_HEAD_INIT(type) size,
@@ -266,6 +262,7 @@ static PyObject* python_bcp_object_connect(BCP_ConnectionObject* self, PyObject*
 
     DBSETLUSER(login, username);
     DBSETLPWD(login, password);
+    DBSETLVERSION(login, DBVERSION_70); // Set minimal version to work with SQL Server
     BCP_SETL(login, 1); // Enable BCP on the connection
 
     self->dbproc = dbopen(login, server);
@@ -318,7 +315,7 @@ static PyObject* python_bcp_object_session_init(BCP_ConnectionObject* self, PyOb
         return NULL;
     }
 
-    if (bcp_init(self->dbproc, table_name, NULL, NULL, DB_IN) == FAIL)
+    if (bcp_init(self->dbproc, table_name, NULL,NULL, DB_IN) == FAIL)
     {
         PyErr_SetString(BCP_SessionError, "failed to create bcp session for the specified table");
         return NULL;
@@ -409,6 +406,7 @@ static PyObject* python_bcp_object_sendrow(BCP_ConnectionObject* self, PyObject*
 
         PyObject* item = PyList_GetItem(row_list, index);
         PyObject* str = NULL;
+        PyObject* unicode = NULL;
 
         if (item == NULL) // Invalid object raises an error
         {
@@ -422,11 +420,27 @@ static PyObject* python_bcp_object_sendrow(BCP_ConnectionObject* self, PyObject*
         {
             PyErr_SetString(BCP_DataError, "Couldn't get copy of column data");
         }
+#ifdef IS_PY3K
+        // See: https://github.com/dabeaz/python-cookbook/blob/master/src/15/reading_file_like_objects_from_c/sample.c
+        else if ((unicode = PyUnicode_AsEncodedString(str, "utf-8", "strict")) == NULL)
+        {
+            PyErr_SetString(BCP_DataError, "Couldn't get unicode representation of column data");
+            Py_XDECREF(str);
+        }
+#endif
+
         else
         {
             char *ptr;
 
+#ifdef IS_PY3K
+            Py_XDECREF(str);
+            str = unicode;
+
+            if (PyBytes_AsStringAndSize(str, &ptr, &field_sizes[index]) == -1)
+#else
             if (PyString_AsStringAndSize(str, &ptr, &field_sizes[index]) == -1)
+#endif
             {
                 PyErr_SetString(BCP_DataError, "Couldn't get details from column source");
             }
@@ -556,80 +570,80 @@ static PyObject* python_bcp_object_done(BCP_ConnectionObject* self, PyObject* ar
     return Py_BuildValue("i", bcp_done(self->dbproc));
 }
 
-// //=================================================================================
-// //   This method is unused and only exists to test the freetds connection
-// //=================================================================================
-// static PyObject* python_bcp_object_simple_query(BCP_ConnectionObject* self, PyObject* args, PyObject* kwargs)
-// {
-//     static char *keywords[] = {"query", "print_results", NULL};
-//     int print_results = 0;
-//     char* query = "select name from sysobjects";
-// 
-//     int result = PyArg_ParseTupleAndKeywords(args, kwargs, "s|B", keywords, &query, &print_results);
-// 
-//     if (! result)
-//     {
-//         PyErr_SetString(BCP_ParameterError, "No query passed to simplequery()");
-//         return NULL;
-//     }
-// 
-//     dbfcmd(self->dbproc, query);
-//     dbsqlexec(self->dbproc);
-// 
-//     if (PyErr_Occurred())
-//     {
-//         return NULL;
-//     }
-// 
-//     while (dbresults(self->dbproc) != NO_MORE_RESULTS)
-//     {
-//         int columns = dbnumcols(self->dbproc);
-// 
-//         if (columns > 0 && print_results)
-//         {
-//             char fields[columns][8192];
-//             int nulls[columns];
-//             int row = 0;
-//             int index;
-// 
-//             printf("row");
-// 
-//             for (index = 0; index < columns; ++index)
-//             {
-//                 dbbind(self->dbproc, index + 1, NTBSTRINGBIND, sizeof(fields[index]), (BYTE *)fields[index]);
-//                 dbnullbind(self->dbproc, index + 1, &nulls[index]);
-//                 printf (",%s", dbcolname(self->dbproc, index + 1));
-//             }
-// 
-//             printf ("\n");
-// 
-//             while (dbnextrow(self->dbproc) != NO_MORE_ROWS)
-//             {
-//                 printf("%d", row++);
-// 
-//                 for (index = 0; index < columns; ++index)
-//                 {
-//                     printf(",");
-// 
-//                     if (nulls[index] == -1)
-//                         printf ("null");
-//                     else
-//                         printf ("\"%s\"", fields [index]);
-//                 }
-// 
-//                 printf ("\n");
-//             }
-//         }
-// 
-//         if (PyErr_Occurred())
-//         {
-//             return NULL;
-//         }
-//     }
-// 
-//     Py_INCREF(Py_None);
-//     return Py_None;
-// }
+//=================================================================================
+//   This method is unused and only exists to test the freetds connection
+//=================================================================================
+static PyObject* python_bcp_object_simple_query(BCP_ConnectionObject* self, PyObject* args, PyObject* kwargs)
+{
+    static char *keywords[] = {"query", "print_results", NULL};
+    int print_results = 0;
+    char* query = "select name from sysobjects";
+
+    int result = PyArg_ParseTupleAndKeywords(args, kwargs, "s|B", keywords, &query, &print_results);
+
+    if (! result)
+    {
+        PyErr_SetString(BCP_ParameterError, "No query passed to simplequery()");
+        return NULL;
+    }
+
+    dbfcmd(self->dbproc, query);
+    dbsqlexec(self->dbproc);
+
+    if (PyErr_Occurred())
+    {
+        return NULL;
+    }
+
+    while (dbresults(self->dbproc) != NO_MORE_RESULTS)
+    {
+        int columns = dbnumcols(self->dbproc);
+
+        if (columns > 0 && print_results)
+        {
+            char fields[columns][8192];
+            int nulls[columns];
+            int row = 0;
+            int index;
+
+            printf("row");
+
+            for (index = 0; index < columns; ++index)
+            {
+                dbbind(self->dbproc, index + 1, NTBSTRINGBIND, sizeof(fields[index]), (BYTE *)fields[index]);
+                dbnullbind(self->dbproc, index + 1, &nulls[index]);
+                printf (",%s", dbcolname(self->dbproc, index + 1));
+            }
+
+            printf ("\n");
+
+            while (dbnextrow(self->dbproc) != NO_MORE_ROWS)
+            {
+                printf("%d", row++);
+
+                for (index = 0; index < columns; ++index)
+                {
+                    printf(",");
+
+                    if (nulls[index] == -1)
+                        printf ("null");
+                    else
+                        printf ("\"%s\"", fields [index]);
+                }
+
+                printf ("\n");
+            }
+        }
+
+        if (PyErr_Occurred())
+        {
+            return NULL;
+        }
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
 
 //=================================================================================
 //  Create a connection object and create a live connection to a database server
@@ -701,11 +715,11 @@ static PyMethodDef python_bcp_object_methods[] =
 {
     {"connect", (PyCFunction)python_bcp_object_connect, METH_KEYWORDS, "Connect to server"},
     {"disconnect", (PyCFunction)python_bcp_object_disconnect, METH_VARARGS, "Disconnect from server"},
-    {"init", (PyCFunction)python_bcp_object_session_init, METH_VARARGS|METH_KEYWORDS, "Prepare to bulk copy a specified table"},
+    {"init", (PyCFunction)python_bcp_object_session_init, METH_VARARGS, "Prepare to bulk copy a specified table"},
     {"send", (PyCFunction)python_bcp_object_sendrow, METH_VARARGS|METH_KEYWORDS, "Commit transaction of rowcount sent and terminate bulk operation"},
     {"commit", (PyCFunction)python_bcp_object_done, METH_VARARGS, "Commit transaction of rowcount sent and terminate bulk operation"},
     {"done", (PyCFunction)python_bcp_object_done, METH_VARARGS, "Commit transaction of rowcount sent and terminate bulk operation"},
-//    {"simplequery", (PyCFunction)python_bcp_object_simple_query, METH_VARARGS|METH_KEYWORDS, "(DEBUG_ONLY) Test connection with a simple query"},
+    {"simplequery", (PyCFunction)python_bcp_object_simple_query, METH_VARARGS|METH_KEYWORDS, "(DEBUG_ONLY) Test connection with a simple query"},
     {"control", (PyCFunction)python_bcp_object_session_control, METH_VARARGS, "Change control parameters for bcp session"},
     {NULL}        /* Sentinel */
 };
