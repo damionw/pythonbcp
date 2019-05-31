@@ -17,6 +17,7 @@ e.g.\n\n\
 // --------------------------------------------------------------------------------
 // March 24, 2017:   DKW Fix for FreeTDS + Anaconda + Python 2.7 on Windows 7
 // January 20, 2009: DKW, Initial working version
+// May 31, 2019:     DKW Allow Python2 and Python3 conditional compilation
 //=================================================================================
 
 #define python_module_name "bcp"
