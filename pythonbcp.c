@@ -28,6 +28,12 @@ e.g.\n\n\
 #   define IS_PY3K
 #endif
 
+#if PY_MAJOR_VERSION > 3 || (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 8)
+#   define PYFUNCTION_CAST PyCFunctionWithKeywords
+#else
+#   define PYFUNCTION_CAST PyCFunction
+#endif
+
 #ifndef IS_PY3K
 #   ifndef PyVarObject_HEAD_INIT
 #       define PyVarObject_HEAD_INIT(type, size) PyObject_HEAD_INIT(type) size,
@@ -704,24 +710,23 @@ static void python_bcp_object_delete(BCP_ConnectionObject* self)
 //                      Method declaration table for the module
 //=================================================================================
 static PyMethodDef python_bcp_methods[] = {
-    {"use_interfaces", (PyCFunction)python_bcp_use_interfaces, METH_VARARGS|METH_KEYWORDS, "Select interfaces file to use"},
-    {"logging", (PyCFunction)python_bcp_logging, METH_VARARGS|METH_KEYWORDS, "Start or stop logging"},
+    {"use_interfaces", (PYFUNCTION_CAST)python_bcp_use_interfaces, METH_VARARGS|METH_KEYWORDS, "Select interfaces file to use"},
+    {"logging", (PYFUNCTION_CAST)python_bcp_logging, METH_VARARGS|METH_KEYWORDS, "Start or stop logging"},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 //=================================================================================
 //                 Method declaration table for the connection object
 //=================================================================================
-static PyMethodDef python_bcp_object_methods[] =
-{
-    {"connect", (PyCFunction)python_bcp_object_connect, METH_KEYWORDS, "Connect to server"},
-    {"disconnect", (PyCFunction)python_bcp_object_disconnect, METH_VARARGS, "Disconnect from server"},
-    {"init", (PyCFunction)python_bcp_object_session_init, METH_VARARGS, "Prepare to bulk copy a specified table"},
-    {"send", (PyCFunction)python_bcp_object_sendrow, METH_VARARGS|METH_KEYWORDS, "Commit transaction of rowcount sent and terminate bulk operation"},
-    {"commit", (PyCFunction)python_bcp_object_done, METH_VARARGS, "Commit transaction of rowcount sent and terminate bulk operation"},
-    {"done", (PyCFunction)python_bcp_object_done, METH_VARARGS, "Commit transaction of rowcount sent and terminate bulk operation"},
-    {"simplequery", (PyCFunction)python_bcp_object_simple_query, METH_VARARGS|METH_KEYWORDS, "(DEBUG_ONLY) Test connection with a simple query"},
-    {"control", (PyCFunction)python_bcp_object_session_control, METH_VARARGS, "Change control parameters for bcp session"},
+static PyMethodDef python_bcp_object_methods[] = {
+    {"connect", (PYFUNCTION_CAST)python_bcp_object_connect, METH_KEYWORDS|METH_VARARGS, "Connect to server"},
+    {"disconnect", (PYFUNCTION_CAST)python_bcp_object_disconnect, METH_VARARGS, "Disconnect from server"},
+    {"init", (PYFUNCTION_CAST)python_bcp_object_session_init, METH_VARARGS, "Prepare to bulk copy a specified table"},
+    {"send", (PYFUNCTION_CAST)python_bcp_object_sendrow, METH_VARARGS|METH_KEYWORDS, "Commit transaction of rowcount sent and terminate bulk operation"},
+    {"commit", (PYFUNCTION_CAST)python_bcp_object_done, METH_VARARGS, "Commit transaction of rowcount sent and terminate bulk operation"},
+    {"done", (PYFUNCTION_CAST)python_bcp_object_done, METH_VARARGS, "Commit transaction of rowcount sent and terminate bulk operation"},
+    {"simplequery", (PYFUNCTION_CAST)python_bcp_object_simple_query, METH_VARARGS|METH_KEYWORDS, "(DEBUG_ONLY) Test connection with a simple query"},
+    {"control", (PYFUNCTION_CAST)python_bcp_object_session_control, METH_VARARGS, "Change control parameters for bcp session"},
     {NULL}        /* Sentinel */
 };
 
